@@ -1,0 +1,49 @@
+# Camunda 8 itself is NOT part of this file: start it on the host with `c8run.exe start`.
+#
+#   docker compose up -d mailpit          -> only the mail catcher (use with mvn spring-boot:run + npm run dev)
+#   docker compose --profile app up --build -> mail catcher + backend + frontend
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: fulfillment-mailpit
+    ports:
+      - "1025:1025"   # SMTP  (used by the Email connector -> secret SMTP_HOST=localhost)
+      - "8025:8025"   # web UI http://localhost:8025
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+
+  backend:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: backend-springboot/Dockerfile
+    container_name: fulfillment-backend
+    ports:
+      - "8081:8081"
+    environment:
+      # c8run runs on the Docker host
+      CAMUNDA_GRPC_ADDRESS: http://host.docker.internal:26500
+      CAMUNDA_REST_ADDRESS: http://host.docker.internal:8080
+      OPERATE_URL: http://localhost:8080/operate
+      COURIER_API_KEY: ${COURIER_API_KEY:-dev-courier-key}
+      COURIER_PUBLIC_BASE_URL: http://localhost:8081
+      SUBSTITUTION_TIMEOUT: ${SUBSTITUTION_TIMEOUT:-PT5M}
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
+    volumes:
+      - h2-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ./frontend-react
+    container_name: fulfillment-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  h2-data:
