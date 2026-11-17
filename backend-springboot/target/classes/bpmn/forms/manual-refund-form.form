@@ -1,0 +1,46 @@
+{
+  "components": [
+    {
+      "type": "text",
+      "text": "# Manual refund review\nThe automatic refund failed (payment gateway error). Process the refund manually and note the reference.",
+      "id": "Field_manual_refund_form_0",
+      "layout": {
+        "row": "Row_manual_refund_form_0",
+        "columns": null
+      }
+    },
+    {
+      "type": "textfield",
+      "label": "Order ID",
+      "key": "orderId",
+      "readonly": true,
+      "id": "Field_manual_refund_form_1",
+      "layout": {
+        "row": "Row_manual_refund_form_1",
+        "columns": null
+      }
+    },
+    {
+      "type": "textarea",
+      "label": "Refund note / gateway reference",
+      "key": "manualRefundNote",
+      "validate": {
+        "required": true
+      },
+      "id": "Field_manual_refund_form_2",
+      "layout": {
+        "row": "Row_manual_refund_form_2",
+        "columns": null
+      }
+    }
+  ],
+  "type": "default",
+  "id": "manual-refund-form",
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.36.0"
+  },
+  "schemaVersion": 18
+}

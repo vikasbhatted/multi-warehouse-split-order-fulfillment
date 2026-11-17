@@ -1,0 +1,92 @@
+{
+  "components": [
+    {
+      "type": "text",
+      "text": "# Pick & pack items\nScan every item of the parcel. If an item is **damaged** or unusable, add it below with a reason. Leave the list empty when everything is fine.",
+      "id": "Field_pick_pack_form_0",
+      "layout": {
+        "row": "Row_pick_pack_form_0",
+        "columns": null
+      }
+    },
+    {
+      "type": "textfield",
+      "label": "Order ID",
+      "key": "orderId",
+      "readonly": true,
+      "id": "Field_pick_pack_form_1",
+      "layout": {
+        "row": "Row_pick_pack_form_1",
+        "columns": null
+      }
+    },
+    {
+      "type": "dynamiclist",
+      "label": "Damaged items",
+      "path": "damagedItems",
+      "isRepeating": true,
+      "defaultRepetitions": 0,
+      "allowAddRemove": true,
+      "components": [
+        {
+          "type": "textfield",
+          "label": "SKU",
+          "key": "sku",
+          "validate": {
+            "required": true
+          },
+          "id": "Field_dmg_sku",
+          "layout": {
+            "row": "Row_dmg_1",
+            "columns": 6
+          }
+        },
+        {
+          "type": "select",
+          "label": "Reason",
+          "key": "reason",
+          "validate": {
+            "required": true
+          },
+          "id": "Field_dmg_reason",
+          "layout": {
+            "row": "Row_dmg_1",
+            "columns": 6
+          },
+          "values": [
+            {
+              "label": "Torn / ripped",
+              "value": "TORN"
+            },
+            {
+              "label": "Stained",
+              "value": "STAINED"
+            },
+            {
+              "label": "Wrong size / mislabelled",
+              "value": "MISLABELLED"
+            },
+            {
+              "label": "Missing from shelf",
+              "value": "MISSING"
+            }
+          ]
+        }
+      ],
+      "id": "Field_pick_pack_form_2",
+      "layout": {
+        "row": "Row_pick_pack_form_2",
+        "columns": null
+      }
+    }
+  ],
+  "type": "default",
+  "id": "pick-pack-form",
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.36.0"
+  },
+  "schemaVersion": 18
+}

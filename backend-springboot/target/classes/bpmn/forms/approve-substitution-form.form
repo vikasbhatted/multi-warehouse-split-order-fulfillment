@@ -1,0 +1,43 @@
+{
+  "components": [
+    {
+      "type": "text",
+      "text": "# Approve substitution\nA damaged item has a same-warehouse substitute available. Contact the customer and record the decision.",
+      "id": "Field_approve_substitution_form_0",
+      "layout": {
+        "row": "Row_approve_substitution_form_0",
+        "columns": null
+      }
+    },
+    {
+      "type": "textfield",
+      "label": "Order ID",
+      "key": "orderId",
+      "readonly": true,
+      "id": "Field_approve_substitution_form_1",
+      "layout": {
+        "row": "Row_approve_substitution_form_1",
+        "columns": null
+      }
+    },
+    {
+      "type": "checkbox",
+      "label": "Customer accepts the substitute item(s)",
+      "key": "substitutionApproved",
+      "id": "Field_approve_substitution_form_2",
+      "layout": {
+        "row": "Row_approve_substitution_form_2",
+        "columns": null
+      }
+    }
+  ],
+  "type": "default",
+  "id": "approve-substitution-form",
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.36.0"
+  },
+  "schemaVersion": 18
+}
