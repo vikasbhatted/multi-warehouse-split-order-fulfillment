@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_CarrierLabel" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.36.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
+<bpmn:process id="carrier_label_generation" name="3PL Carrier Label Generation" isExecutable="true">
+<bpmn:startEvent id="Start_Label" name="Label requested">
+<bpmn:outgoing>Flow_L1</bpmn:outgoing>
+</bpmn:startEvent>
+<bpmn:serviceTask id="Task_CreateLabel" name="Create carrier label (REST: ShipEngine / mock courier)" zeebe:modelerTemplate="io.camunda.connectors.HttpJson.v2" zeebe:modelerTemplateVersion="18">
+<bpmn:extensionElements><zeebe:taskDefinition type="io.camunda:http-json:1" retries="3" /><zeebe:ioMapping><zeebe:input source="apiKey" target="authentication.type" /><zeebe:input source="headers" target="authentication.apiKeyLocation" /><zeebe:input source="API-Key" target="authentication.name" /><zeebe:input source="{{secrets.COURIER_API_KEY}}" target="authentication.value" /><zeebe:input source="POST" target="method" /><zeebe:input source="{{secrets.COURIER_API_BASE_URL}}/v1/labels" target="url" /><zeebe:input source='={"Content-Type": "application/json", "X-Order-Id": orderId}' target="headers" /><zeebe:input source='={"carrier_id": "se-mock-dhl", "service_code": "dhl_parcel", "ship_from": {"warehouse_id": warehouseId}, "ship_to": {"name": customer.name, "address_line1": shippingAddress.line1, "city_locality": shippingAddress.city, "postal_code": shippingAddress.postalCode, "country_code": shippingAddress.country}, "weight": {"value": parcelWeightKg, "unit": "kilogram"}, "reference": orderId + "/" + warehouseId}' target="body" /><zeebe:input source="20" target="connectionTimeoutInSeconds" /><zeebe:input source="20" target="readTimeoutInSeconds" /></zeebe:ioMapping><zeebe:taskHeaders><zeebe:header key="elementTemplateVersion" value="18" /><zeebe:header key="elementTemplateId" value="io.camunda.connectors.HttpJson.v2" /><zeebe:header key="resultExpression" value="={labelResult: {trackingNumber: response.body.tracking_number, labelUrl: response.body.label_download.pdf, carrier: response.body.carrier_code, labelId: response.body.label_id, shipmentCost: response.body.shipment_cost.amount}}" /><zeebe:header key="errorExpression" value='=if error.code = "422" then bpmnError("ADDRESS_INVALID", error.message) else null' /><zeebe:header key="retryBackoff" value="PT3S" /></zeebe:taskHeaders></bpmn:extensionElements>
+<bpmn:incoming>Flow_L1</bpmn:incoming>
+<bpmn:incoming>Flow_L4</bpmn:incoming>
+<bpmn:outgoing>Flow_L2</bpmn:outgoing>
+</bpmn:serviceTask>
+<bpmn:boundaryEvent id="Boundary_AddressInvalid" name="Address rejected" attachedToRef="Task_CreateLabel">
+<bpmn:outgoing>Flow_L3</bpmn:outgoing>
+<bpmn:errorEventDefinition id="ErrDef_Address" errorRef="Error_AddressInvalid" />
+</bpmn:boundaryEvent>
+<bpmn:userTask id="UT_CorrectAddress" name="Correct shipping address">
+<bpmn:extensionElements><zeebe:userTask /><zeebe:assignmentDefinition candidateGroups="customer-support" /><zeebe:formDefinition formId="correct-address-form" /></bpmn:extensionElements>
+<bpmn:incoming>Flow_L3</bpmn:incoming>
+<bpmn:outgoing>Flow_L4</bpmn:outgoing>
+</bpmn:userTask>
+<bpmn:endEvent id="End_Label" name="Label created">
+<bpmn:incoming>Flow_L2</bpmn:incoming>
+</bpmn:endEvent>
+<bpmn:sequenceFlow id="Flow_L1" sourceRef="Start_Label" targetRef="Task_CreateLabel" />
+<bpmn:sequenceFlow id="Flow_L2" sourceRef="Task_CreateLabel" targetRef="End_Label" />
+<bpmn:sequenceFlow id="Flow_L3" sourceRef="Boundary_AddressInvalid" targetRef="UT_CorrectAddress" />
+<bpmn:sequenceFlow id="Flow_L4" name="Retry with corrected address" sourceRef="UT_CorrectAddress" targetRef="Task_CreateLabel" />
+</bpmn:process>
+<bpmn:error id="Error_AddressInvalid" name="Address invalid" errorCode="ADDRESS_INVALID" />
+<bpmndi:BPMNDiagram id="BPMNDiagram_carrier_label_generation">
+<bpmndi:BPMNPlane id="BPMNPlane_carrier_label_generation" bpmnElement="carrier_label_generation">
+<bpmndi:BPMNShape id="Start_Label_di" bpmnElement="Start_Label"><dc:Bounds x="152" y="182" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="125" y="223" width="90" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Task_CreateLabel_di" bpmnElement="Task_CreateLabel"><dc:Bounds x="250" y="160" width="140" height="80" /></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Boundary_AddressInvalid_di" bpmnElement="Boundary_AddressInvalid"><dc:Bounds x="302" y="222" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="274" y="261" width="90" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="UT_CorrectAddress_di" bpmnElement="UT_CorrectAddress"><dc:Bounds x="250" y="320" width="140" height="80" /></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="End_Label_di" bpmnElement="End_Label"><dc:Bounds x="460" y="182" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="433" y="223" width="90" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="Flow_L1_di" bpmnElement="Flow_L1"><di:waypoint x="188" y="200" /><di:waypoint x="250" y="200" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_L2_di" bpmnElement="Flow_L2"><di:waypoint x="390" y="200" /><di:waypoint x="460" y="200" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_L3_di" bpmnElement="Flow_L3"><di:waypoint x="320" y="258" /><di:waypoint x="320" y="320" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_L4_di" bpmnElement="Flow_L4"><di:waypoint x="250" y="360" /><di:waypoint x="215" y="360" /><di:waypoint x="215" y="200" /><di:waypoint x="250" y="200" /></bpmndi:BPMNEdge>
+</bpmndi:BPMNPlane>
+</bpmndi:BPMNDiagram>
+</bpmn:definitions>

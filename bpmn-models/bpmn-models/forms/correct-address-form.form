@@ -1,0 +1,77 @@
+{
+  "components": [
+    {
+      "type": "text",
+      "text": "# Correct shipping address\nThe carrier rejected the address (HTTP 422). Fix it and the label request is retried.",
+      "id": "Field_correct_address_form_0",
+      "layout": {
+        "row": "Row_correct_address_form_0",
+        "columns": null
+      }
+    },
+    {
+      "type": "textfield",
+      "label": "Address line 1",
+      "key": "shippingAddress.line1",
+      "validate": {
+        "required": true
+      },
+      "id": "Field_correct_address_form_1",
+      "layout": {
+        "row": "Row_correct_address_form_1",
+        "columns": null
+      }
+    },
+    {
+      "type": "textfield",
+      "label": "City",
+      "key": "shippingAddress.city",
+      "validate": {
+        "required": true
+      },
+      "id": "Field_correct_address_form_2",
+      "layout": {
+        "row": "Row_correct_address_form_2",
+        "columns": null
+      }
+    },
+    {
+      "type": "textfield",
+      "label": "Postal code",
+      "key": "shippingAddress.postalCode",
+      "validate": {
+        "required": true,
+        "pattern": "^(?!00000$)[A-Za-z0-9 -]{3,10}$"
+      },
+      "id": "Field_correct_address_form_3",
+      "layout": {
+        "row": "Row_correct_address_form_3",
+        "columns": null
+      }
+    },
+    {
+      "type": "textfield",
+      "label": "Country (ISO-2)",
+      "key": "shippingAddress.country",
+      "validate": {
+        "required": true,
+        "minLength": 2,
+        "maxLength": 2
+      },
+      "id": "Field_correct_address_form_4",
+      "layout": {
+        "row": "Row_correct_address_form_4",
+        "columns": null
+      }
+    }
+  ],
+  "type": "default",
+  "id": "correct-address-form",
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": {
+    "name": "Camunda Modeler",
+    "version": "5.36.0"
+  },
+  "schemaVersion": 18
+}

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Main" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.36.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
+<bpmn:process id="split_order_fulfillment" name="Multi-Warehouse Split Order Fulfillment" isExecutable="true">
+<bpmn:startEvent id="Start_Order" name="Order placed">
+<bpmn:outgoing>Flow_M1</bpmn:outgoing>
+</bpmn:startEvent>
+<bpmn:serviceTask id="Task_Validate" name="Validate order &amp; allocate stock">
+<bpmn:extensionElements><zeebe:taskDefinition type="validate-and-allocate" retries="3" /><zeebe:ioMapping><zeebe:input source="=orderId" target="orderId" /><zeebe:input source="=items" target="items" /></zeebe:ioMapping></bpmn:extensionElements>
+<bpmn:incoming>Flow_M1</bpmn:incoming>
+<bpmn:outgoing>Flow_M2</bpmn:outgoing>
+</bpmn:serviceTask>
+<bpmn:boundaryEvent id="Boundary_Rejected" name="Order rejected" attachedToRef="Task_Validate">
+<bpmn:outgoing>Flow_M11</bpmn:outgoing>
+<bpmn:errorEventDefinition id="ErrDef_Rejected" errorRef="Error_OrderRejected" />
+</bpmn:boundaryEvent>
+<bpmn:serviceTask id="Task_RejectEmail" name="Send rejection email" zeebe:modelerTemplate="io.camunda.connectors.email.v1" zeebe:modelerTemplateVersion="8">
+<bpmn:extensionElements><zeebe:taskDefinition type="io.camunda:email:1" retries="3" /><zeebe:ioMapping><zeebe:input source="smtp" target="protocol" /><zeebe:input source="simple" target="authentication.type" /><zeebe:input source="{{secrets.SMTP_USERNAME}}" target="authentication.username" /><zeebe:input source="{{secrets.SMTP_PASSWORD}}" target="authentication.password" /><zeebe:input source="sendEmailSmtp" target="data.smtpActionDiscriminator" /><zeebe:input source="{{secrets.SMTP_HOST}}" target="data.smtpConfig.smtpHost" /><zeebe:input source="1025" target="data.smtpConfig.smtpPort" /><zeebe:input source="NONE" target="data.smtpConfig.smtpCryptographicProtocol" /><zeebe:input source="{{secrets.SMTP_FROM}}" target="data.smtpAction.from" /><zeebe:input source="=customer.email" target="data.smtpAction.to" /><zeebe:input source='="Order " + orderId + " could not be accepted"' target="data.smtpAction.subject" /><zeebe:input source="PLAIN" target="data.smtpAction.contentType" /><zeebe:input source='="Hello " + customer.name + ",\n\nWe are sorry - your order " + orderId + " could not be accepted.\nReason: " + rejectionReason + "\n\nNo payment has been taken.\n\nFashionHub Customer Care"' target="data.smtpAction.body" /></zeebe:ioMapping><zeebe:taskHeaders><zeebe:header key="elementTemplateVersion" value="8" /><zeebe:header key="elementTemplateId" value="io.camunda.connectors.email.v1" /><zeebe:header key="resultVariable" value="rejectMail" /><zeebe:header key="retryBackoff" value="PT5S" /></zeebe:taskHeaders></bpmn:extensionElements>
+<bpmn:incoming>Flow_M11</bpmn:incoming>
+<bpmn:outgoing>Flow_M12</bpmn:outgoing>
+</bpmn:serviceTask>
+<bpmn:endEvent id="End_Rejected" name="Order rejected">
+<bpmn:incoming>Flow_M12</bpmn:incoming>
+</bpmn:endEvent>
+<bpmn:exclusiveGateway id="GW_Strategy" name="Multiple warehouses?" default="Flow_M4">
+<bpmn:incoming>Flow_M2</bpmn:incoming>
+<bpmn:outgoing>Flow_M3</bpmn:outgoing>
+<bpmn:outgoing>Flow_M4</bpmn:outgoing>
+</bpmn:exclusiveGateway>
+<bpmn:serviceTask id="Task_NotifySplit" name="Announce split shipment (Email)" zeebe:modelerTemplate="io.camunda.connectors.email.v1" zeebe:modelerTemplateVersion="8">
+<bpmn:extensionElements><zeebe:taskDefinition type="io.camunda:email:1" retries="3" /><zeebe:ioMapping><zeebe:input source="smtp" target="protocol" /><zeebe:input source="simple" target="authentication.type" /><zeebe:input source="{{secrets.SMTP_USERNAME}}" target="authentication.username" /><zeebe:input source="{{secrets.SMTP_PASSWORD}}" target="authentication.password" /><zeebe:input source="sendEmailSmtp" target="data.smtpActionDiscriminator" /><zeebe:input source="{{secrets.SMTP_HOST}}" target="data.smtpConfig.smtpHost" /><zeebe:input source="1025" target="data.smtpConfig.smtpPort" /><zeebe:input source="NONE" target="data.smtpConfig.smtpCryptographicProtocol" /><zeebe:input source="{{secrets.SMTP_FROM}}" target="data.smtpAction.from" /><zeebe:input source="=customer.email" target="data.smtpAction.to" /><zeebe:input source='="Your order " + orderId + " ships in " + string(warehouseCount) + " parcels"' target="data.smtpAction.subject" /><zeebe:input source="PLAIN" target="data.smtpAction.contentType" /><zeebe:input source='="Hello " + customer.name + ",\n\nYour order " + orderId + " will be delivered in " + string(warehouseCount) + " separate parcels from different fulfilment centres. You will receive one tracking number per parcel.\n\nFashionHub Customer Care"' target="data.smtpAction.body" /></zeebe:ioMapping><zeebe:taskHeaders><zeebe:header key="elementTemplateVersion" value="8" /><zeebe:header key="elementTemplateId" value="io.camunda.connectors.email.v1" /><zeebe:header key="resultVariable" value="splitMail" /><zeebe:header key="retryBackoff" value="PT5S" /></zeebe:taskHeaders></bpmn:extensionElements>
+<bpmn:incoming>Flow_M3</bpmn:incoming>
+<bpmn:outgoing>Flow_M5</bpmn:outgoing>
+</bpmn:serviceTask>
+<bpmn:exclusiveGateway id="GW_Join">
+<bpmn:incoming>Flow_M4</bpmn:incoming>
+<bpmn:incoming>Flow_M5</bpmn:incoming>
+<bpmn:outgoing>Flow_M6</bpmn:outgoing>
+</bpmn:exclusiveGateway>
+<bpmn:callActivity id="Call_Warehouse" name="Pick, pack &amp; ship per warehouse (parallel)">
+<bpmn:extensionElements><zeebe:calledElement processId="warehouse_pick_pack_ship" propagateAllChildVariables="false" propagateAllParentVariables="false" /><zeebe:ioMapping><zeebe:input source="=orderId" target="orderId" /><zeebe:input source="=customer" target="customer" /><zeebe:input source="=shippingAddress" target="shippingAddress" /><zeebe:input source="=warehouseGroup" target="warehouseGroup" /><zeebe:input source="=substitutionTimeout" target="substitutionTimeout" /><zeebe:input source="=simulateRefundFailure" target="simulateRefundFailure" /><zeebe:output source="=shipmentResult" target="shipmentResult" /></zeebe:ioMapping></bpmn:extensionElements>
+<bpmn:incoming>Flow_M6</bpmn:incoming>
+<bpmn:outgoing>Flow_M7</bpmn:outgoing>
+<bpmn:multiInstanceLoopCharacteristics><bpmn:extensionElements><zeebe:loopCharacteristics inputCollection="=warehouseGroups" inputElement="warehouseGroup" outputCollection="shipmentResults" outputElement="=shipmentResult" /></bpmn:extensionElements></bpmn:multiInstanceLoopCharacteristics>
+</bpmn:callActivity>
+<bpmn:serviceTask id="Task_Consolidate" name="Consolidate shipment results">
+<bpmn:extensionElements><zeebe:taskDefinition type="consolidate-order" retries="3" /><zeebe:ioMapping><zeebe:input source="=orderId" target="orderId" /><zeebe:input source="=shipmentResults" target="shipmentResults" /></zeebe:ioMapping></bpmn:extensionElements>
+<bpmn:incoming>Flow_M7</bpmn:incoming>
+<bpmn:outgoing>Flow_M8</bpmn:outgoing>
+</bpmn:serviceTask>
+<bpmn:serviceTask id="Task_ShippingAlert" name="Send shipping alert per parcel (sequential)" zeebe:modelerTemplate="io.camunda.connectors.email.v1" zeebe:modelerTemplateVersion="8">
+<bpmn:extensionElements><zeebe:taskDefinition type="io.camunda:email:1" retries="3" /><zeebe:ioMapping><zeebe:input source="smtp" target="protocol" /><zeebe:input source="simple" target="authentication.type" /><zeebe:input source="{{secrets.SMTP_USERNAME}}" target="authentication.username" /><zeebe:input source="{{secrets.SMTP_PASSWORD}}" target="authentication.password" /><zeebe:input source="sendEmailSmtp" target="data.smtpActionDiscriminator" /><zeebe:input source="{{secrets.SMTP_HOST}}" target="data.smtpConfig.smtpHost" /><zeebe:input source="1025" target="data.smtpConfig.smtpPort" /><zeebe:input source="NONE" target="data.smtpConfig.smtpCryptographicProtocol" /><zeebe:input source="{{secrets.SMTP_FROM}}" target="data.smtpAction.from" /><zeebe:input source="=customer.email" target="data.smtpAction.to" /><zeebe:input source='="Parcel shipped: " + shipment.trackingNumber' target="data.smtpAction.subject" /><zeebe:input source="PLAIN" target="data.smtpAction.contentType" /><zeebe:input source='="Hello " + customer.name + ",\n\nA parcel from " + shipment.warehouseName + " for order " + orderId + " has shipped with " + shipment.carrier + ".\nTracking number: " + shipment.trackingNumber + "\nLabel: " + shipment.labelUrl + "\nItems shipped: " + string(shipment.itemsShipped) + (if shipment.itemsRefunded &gt; 0 then "\nItems refunded: " + string(shipment.itemsRefunded) else "") + "\n\nFashionHub Customer Care"' target="data.smtpAction.body" /></zeebe:ioMapping><zeebe:taskHeaders><zeebe:header key="elementTemplateVersion" value="8" /><zeebe:header key="elementTemplateId" value="io.camunda.connectors.email.v1" /><zeebe:header key="resultVariable" value="alertResult" /><zeebe:header key="retryBackoff" value="PT5S" /></zeebe:taskHeaders></bpmn:extensionElements>
+<bpmn:incoming>Flow_M8</bpmn:incoming>
+<bpmn:outgoing>Flow_M9</bpmn:outgoing>
+<bpmn:multiInstanceLoopCharacteristics isSequential="true"><bpmn:extensionElements><zeebe:loopCharacteristics inputCollection="=shipmentResults" inputElement="shipment" outputCollection="alertResults" outputElement="=alertResult" /></bpmn:extensionElements></bpmn:multiInstanceLoopCharacteristics>
+</bpmn:serviceTask>
+<bpmn:serviceTask id="Task_Complete" name="Complete order">
+<bpmn:extensionElements><zeebe:taskDefinition type="complete-order" retries="3" /><zeebe:ioMapping><zeebe:input source="=orderId" target="orderId" /><zeebe:input source="=shipmentResults" target="shipmentResults" /></zeebe:ioMapping></bpmn:extensionElements>
+<bpmn:incoming>Flow_M9</bpmn:incoming>
+<bpmn:outgoing>Flow_M10</bpmn:outgoing>
+</bpmn:serviceTask>
+<bpmn:endEvent id="End_Fulfilled" name="Order fulfilled">
+<bpmn:incoming>Flow_M10</bpmn:incoming>
+</bpmn:endEvent>
+<bpmn:sequenceFlow id="Flow_M1" sourceRef="Start_Order" targetRef="Task_Validate" />
+<bpmn:sequenceFlow id="Flow_M2" sourceRef="Task_Validate" targetRef="GW_Strategy" />
+<bpmn:sequenceFlow id="Flow_M3" name="Yes - split" sourceRef="GW_Strategy" targetRef="Task_NotifySplit">
+<bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=warehouseCount &gt; 1</bpmn:conditionExpression>
+</bpmn:sequenceFlow>
+<bpmn:sequenceFlow id="Flow_M4" name="No - single parcel" sourceRef="GW_Strategy" targetRef="GW_Join" />
+<bpmn:sequenceFlow id="Flow_M5" sourceRef="Task_NotifySplit" targetRef="GW_Join" />
+<bpmn:sequenceFlow id="Flow_M6" sourceRef="GW_Join" targetRef="Call_Warehouse" />
+<bpmn:sequenceFlow id="Flow_M7" sourceRef="Call_Warehouse" targetRef="Task_Consolidate" />
+<bpmn:sequenceFlow id="Flow_M8" sourceRef="Task_Consolidate" targetRef="Task_ShippingAlert" />
+<bpmn:sequenceFlow id="Flow_M9" sourceRef="Task_ShippingAlert" targetRef="Task_Complete" />
+<bpmn:sequenceFlow id="Flow_M10" sourceRef="Task_Complete" targetRef="End_Fulfilled" />
+<bpmn:sequenceFlow id="Flow_M11" sourceRef="Boundary_Rejected" targetRef="Task_RejectEmail" />
+<bpmn:sequenceFlow id="Flow_M12" sourceRef="Task_RejectEmail" targetRef="End_Rejected" />
+</bpmn:process>
+<bpmn:error id="Error_OrderRejected" name="Order rejected" errorCode="ORDER_REJECTED" />
+<bpmndi:BPMNDiagram id="BPMNDiagram_split_order_fulfillment">
+<bpmndi:BPMNPlane id="BPMNPlane_split_order_fulfillment" bpmnElement="split_order_fulfillment">
+<bpmndi:BPMNShape id="Start_Order_di" bpmnElement="Start_Order"><dc:Bounds x="152" y="282" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="125" y="323" width="90" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Task_Validate_di" bpmnElement="Task_Validate"><dc:Bounds x="240" y="260" width="130" height="80" /></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Boundary_Rejected_di" bpmnElement="Boundary_Rejected"><dc:Bounds x="287" y="322" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="259" y="361" width="90" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Task_RejectEmail_di" bpmnElement="Task_RejectEmail"><dc:Bounds x="240" y="410" width="130" height="80" /></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="End_Rejected_di" bpmnElement="End_Rejected"><dc:Bounds x="420" y="432" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="393" y="473" width="90" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="GW_Strategy_di" bpmnElement="GW_Strategy" isMarkerVisible="true"><dc:Bounds x="455" y="275" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="435" y="243" width="90" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Task_NotifySplit_di" bpmnElement="Task_NotifySplit"><dc:Bounds x="560" y="140" width="140" height="80" /></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="GW_Join_di" bpmnElement="GW_Join" isMarkerVisible="true"><dc:Bounds x="780" y="275" width="50" height="50" /></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Call_Warehouse_di" bpmnElement="Call_Warehouse"><dc:Bounds x="880" y="250" width="150" height="100" /></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Task_Consolidate_di" bpmnElement="Task_Consolidate"><dc:Bounds x="1100" y="260" width="130" height="80" /></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Task_ShippingAlert_di" bpmnElement="Task_ShippingAlert"><dc:Bounds x="1290" y="250" width="150" height="100" /></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Task_Complete_di" bpmnElement="Task_Complete"><dc:Bounds x="1500" y="260" width="120" height="80" /></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="End_Fulfilled_di" bpmnElement="End_Fulfilled"><dc:Bounds x="1670" y="282" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1643" y="323" width="90" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="Flow_M1_di" bpmnElement="Flow_M1"><di:waypoint x="188" y="300" /><di:waypoint x="240" y="300" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_M2_di" bpmnElement="Flow_M2"><di:waypoint x="370" y="300" /><di:waypoint x="455" y="300" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_M3_di" bpmnElement="Flow_M3"><di:waypoint x="480" y="275" /><di:waypoint x="480" y="180" /><di:waypoint x="560" y="180" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_M4_di" bpmnElement="Flow_M4"><di:waypoint x="505" y="300" /><di:waypoint x="780" y="300" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_M5_di" bpmnElement="Flow_M5"><di:waypoint x="700" y="180" /><di:waypoint x="805" y="180" /><di:waypoint x="805" y="275" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_M6_di" bpmnElement="Flow_M6"><di:waypoint x="830" y="300" /><di:waypoint x="880" y="300" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_M7_di" bpmnElement="Flow_M7"><di:waypoint x="1030" y="300" /><di:waypoint x="1100" y="300" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_M8_di" bpmnElement="Flow_M8"><di:waypoint x="1230" y="300" /><di:waypoint x="1290" y="300" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_M9_di" bpmnElement="Flow_M9"><di:waypoint x="1440" y="300" /><di:waypoint x="1500" y="300" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_M10_di" bpmnElement="Flow_M10"><di:waypoint x="1620" y="300" /><di:waypoint x="1670" y="300" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_M11_di" bpmnElement="Flow_M11"><di:waypoint x="305" y="358" /><di:waypoint x="305" y="410" /></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="Flow_M12_di" bpmnElement="Flow_M12"><di:waypoint x="370" y="450" /><di:waypoint x="420" y="450" /></bpmndi:BPMNEdge>
+</bpmndi:BPMNPlane>
+</bpmndi:BPMNDiagram>
+</bpmn:definitions>
